@@ -1,8 +1,6 @@
 (function() {
-  var collectionName = '1m_empresas';
-
   var createCluster = function() {
-    var cluster = new L.TileCluster('http://192.168.88.143:9090/map/db1/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=123&cluster_qtd={cq}',
+    var cluster = new L.TileCluster('http://maps.gogeo.io/map/db1/people/{z}/{x}/{y}/cluster.json?mapkey=123&cluster_qtd={cq}',
       {
         useJsonP: false,
         calculateClusterQtd: function(zoom) {
@@ -20,7 +18,7 @@
 
   var createLayer = function() {
     // add your collection
-    var tileLayer = L.tileLayer('http://192.168.88.143:9090/map/db1/' + collectionName + '/{z}/{x}/{y}/tile.png?mapkey=123',
+    var tileLayer = L.tileLayer('http://maps.gogeo.io/map/db1/people/{z}/{x}/{y}/tile.png?mapkey=123',
       {
         isBaseLayer: false
       }
