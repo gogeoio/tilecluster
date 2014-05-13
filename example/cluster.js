@@ -1,10 +1,11 @@
 (function() {
-  var collectionName = '1m_empresas';
+  var gogeoUrl = 'http://maps.gogeo.io';
+  var collectionName = 'people';
 
   var createCluster = function() {
-    var cluster = new L.TileCluster('http://192.168.88.143:9090/map/db1/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=123&cluster_qtd={cq}',
+    var cluster = new L.TileCluster(gogeoUrl + '/map/db1/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=123&cluster_qtd={cq}&callback={cb}',
       {
-        useJsonP: false,
+        useJsonP: true,
         calculateClusterQtd: function(zoom) {
           if (zoom >= 4) {
             return 2;
@@ -20,7 +21,7 @@
 
   var createLayer = function() {
     // add your collection
-    var tileLayer = L.tileLayer('http://192.168.88.143:9090/map/db1/' + collectionName + '/{z}/{x}/{y}/tile.png?mapkey=123',
+    var tileLayer = L.tileLayer(gogeoUrl + '/map/db1/' + collectionName + '/{z}/{x}/{y}/tile.png?mapkey=123',
       {
         isBaseLayer: false
       }
@@ -47,7 +48,7 @@
     function(event) {
       var zoom = this.getZoom();
 
-      if (zoom >= 10) {
+      if (zoom >= 13) {
         if (cluster) {
           map.removeLayer(cluster);
           cluster = null;

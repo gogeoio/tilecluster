@@ -60,9 +60,15 @@ L.TileCluster = L.Class.extend({
 		this._url = url;
 		this._cache = {};
 		this._group = L.featureGroup();
+		this._jsonp_prefix = 'cl_us_ter_';
 
 		if (url.match(/callback={cb}/) && !this.options.useJsonP) {
 			console.error('Must set useJsonP options if you want use a callback function!');
+			return null;
+		}
+		
+		if (!url.match(/callback={cb}/) && this.options.useJsonP) {
+			console.error('Must add callback={cb} url param to use with JsonP mode!');
 			return null;
 		}
 
@@ -78,10 +84,10 @@ L.TileCluster = L.Class.extend({
 			//Find a unique id in window we can use for our callbacks
 			//Required for jsonP
 			var i = 0;
-			while (window['cl_us_ter' + i]) {
+			while (window[this._jsonp_prefix + i]) {
 				i++;
 			}
-			this._windowKey = 'cl_us_ter' + i;
+			this._windowKey = this._jsonp_prefix + i;
 			window[this._windowKey] = {};
 		}
 
@@ -164,7 +170,7 @@ L.TileCluster = L.Class.extend({
 	_loadTileP: function (zoom, x, y) {
 		var head = document.getElementsByTagName('head')[0],
 		    key = zoom + '_' + x + '_' + y,
-		    functionName = 'lu_' + key,
+		    functionName = this._jsonp_prefix + key,
 		    wk = this._windowKey,
 		    self = this;
 
@@ -247,19 +253,27 @@ L.TileCluster = L.Class.extend({
 				var coords = cluster.coords;
 				var latlng = L.latLng(coords[1], coords[0]);
 
-				var clusterIcon = this.options.createIcon(cluster);
-				var clusterMarker = L.marker(latlng, {
-					icon: clusterIcon
-				});
+				if (cluster.count >= 2) {
+					var clusterIcon = this.options.createIcon(cluster);
+					var clusterMarker = L.marker(latlng,
+						{
+							icon: clusterIcon
+						}
+					);
 
-				clusterMarker.key = key;
-				clusterMarker.id = i;
-				this._group.addLayer(clusterMarker);
+					clusterMarker.key = key;
+					clusterMarker.id = i;
+					this._group.addLayer(clusterMarker);
+				} else if (cluster.count == 1) {
+					var marker = L.marker(latlng);
+					this._group.addLayer(marker);
+				}
 			}
 		}
 	},
 
 	_drawConvexHull: function(event) {
+		// If already had a convex hull drawed
 		if (this._convexHull) {
 			return;
 		}
@@ -268,25 +282,42 @@ L.TileCluster = L.Class.extend({
     var id = event.layer.id;
 
     var data = this._cache[key];
+
+    if (!data || !data[id]) {
+    	return;
+    }
+
     data = data[id];
 
-    if (data && data.stats.hull && data.count >= 3) {
+    if (data && data.stats.hull) {
+    	if (data.count >= 2) {
+		    var wkt = data.stats.hull;
+		    var lls = this._wktToLatLngs(wkt);
 
-	    var wkt = data.stats.hull;
-	    var lls = this._wktToLatLngs(wkt);
+		    this._convexHull = L.polygon(lls);
 
-	    this._convexHull = L.polygon(lls);
-
-	    this._map.addLayer(this._convexHull);
+		    this._map.addLayer(this._convexHull);
+    	}
     }
 	},
 
 	_wktToLatLngs: function(wkt) {
-		// Convert a wkt POLYGON to a Array of LatLng objects
+
+		// Check if is a point
+		if (wkt.match('POINT (.*)')) {
+			return [];
+		}
+
+		// Convert a wkt POLYGON/LINESTRING to a Array of LatLng objects
 		var string = wkt.replace('POLYGON', '');
-    string = string.replace('((', '');
-    string = string.replace('))', '');
+		string = string.replace('LINESTRING', '');
+    string = string.replace('(', '');
+    string = string.replace('(', '');
+    string = string.replace(')', '');
+    string = string.replace(')', '');
     string = string.trim();
+
+    // console.log('string', string);
 
     var points = string.split(',');
     var lls = [];
