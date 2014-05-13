@@ -21,7 +21,11 @@
 
   var createLayer = function() {
     // add your collection
+<<<<<<< HEAD
     var tileLayer = L.tileLayer(gogeoUrl + '/map/db1/' + collectionName + '/{z}/{x}/{y}/tile.png?mapkey=123',
+=======
+    var tileLayer = L.tileLayer('http://maps.gogeo.io/map/db1/people/{z}/{x}/{y}/tile.png?mapkey=123',
+>>>>>>> 92bfc4f2ca57fbaad517b83cc6771f54834d6f73
       {
         isBaseLayer: false
       }
