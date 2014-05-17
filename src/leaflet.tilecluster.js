@@ -347,12 +347,17 @@ L.TileCluster = L.Class.extend({
 		}
 
 		var iconPoint = new L.Point(40, 40);
+		var klass = 'small';
 
 		if (childCount >= 100000) {
-			iconPoint = new L.Point(50, 50);
+			iconPoint = new L.Point(55, 55);
+			klass = 'large';
+		} else if (childCount >= 10000) {
+			iconPoint = new L.Point(45, 45);
+			klass = 'medium';
 		}
 
-		return new L.DivIcon({ html: '<div><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
+		return new L.DivIcon({ html: '<div class="' + klass + '"><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
 	}
 });
 

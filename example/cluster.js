@@ -1,9 +1,11 @@
 (function() {
   var gogeoUrl = 'http://maps.gogeo.io';
   var collectionName = 'people';
+  var databaseName = 'databases';
+  var key = '123';
 
   var createCluster = function() {
-    var cluster = new L.TileCluster(gogeoUrl + '/map/db1/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=123&cluster_qtd={cq}&callback={cb}',
+    var cluster = new L.TileCluster(gogeoUrl + '/map/' + databaseName + '/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=' + key + '&cluster_qtd={cq}&callback={cb}',
       {
         useJsonP: true,
         calculateClusterQtd: function(zoom) {
@@ -36,7 +38,7 @@
     layers: [ cluster ]
   });
 
-  map.setView([-16, -50], 9);
+  map.setView([-16, -50], 5);
 
   // add an OpenStreetMap tile layer
   var baseLayer = L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
