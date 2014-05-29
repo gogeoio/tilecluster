@@ -50,7 +50,7 @@ L.TileCluster = L.Class.extend({
 		maxZoom: 18,
 		tileSize: 256,
 
-		useJsonP: true,
+		useJsonP: false,
 		pointerCursor: true
 	},
 
