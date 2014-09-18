@@ -42,6 +42,10 @@ var cluster = new L.TileCluster('http://maps.gogeo.io/map/db1/people/{z}/{x}/{y}
   );
 ```
 
-License
+### Live example
+
+http://demos.gogeo.io/geo-aggregation
+
+### License
 
 Leaflet.tilecluster is free software, and may be redistributed under the MIT-LICENSE.
