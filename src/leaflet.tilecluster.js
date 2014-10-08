@@ -339,27 +339,29 @@ L.TileCluster = L.Class.extend({
 	_defaultIconCreateFunction: function (cluster) {
 		var childCount = cluster.count;
 
-		var c = ' marker-cluster-';
-		if (childCount < 10) {
-			c += 'small';
-		} else if (childCount < 100) {
-			c += 'medium';
-		} else {
-			c += 'large';
-		}
+    var c = ' marker-cluster-';
+    if (childCount < 100) {
+      c += 'small';
+    } else if (childCount < 10000) {
+      c += 'medium';
+    } else if (childCount < 100000) {
+      c += 'large';
+    } else {
+      c += 'extra-large';
+    }
 
-		var iconPoint = new L.Point(40, 40);
-		var klass = 'small';
+    var iconPoint = new L.Point(40, 40);
+    var klass = 'small';
 
-		if (childCount >= 100000) {
-			iconPoint = new L.Point(55, 55);
-			klass = 'large';
-		} else if (childCount >= 10000) {
-			iconPoint = new L.Point(45, 45);
-			klass = 'medium';
-		}
+    if (childCount >= 100000) {
+      iconPoint = new L.Point(55, 55);
+      klass = 'large';
+    } else if (childCount >= 10000) {
+      iconPoint = new L.Point(45, 45);
+      klass = 'medium';
+    }
 
-		return new L.DivIcon({ html: '<div class="' + klass + '"><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
+    return new L.DivIcon({ html: '<div class="' + klass + '"><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
 	}
 });
 
