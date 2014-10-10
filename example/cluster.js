@@ -1,16 +1,16 @@
 (function() {
   var gogeoUrl = 'http://maps.gogeo.io';
-  var collectionName = 'people';
-  var databaseName = 'databases';
-  var key = '123';
+  var databaseName = 'db1';
+  var collectionName = 'empresas_brasil';
+  var key = 'a9b6ed7c-0404-40e0-8c83-64cfcadd276d';
 
   var createCluster = function() {
-    var cluster = new L.TileCluster(gogeoUrl + '/map/' + databaseName + '/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=' + key + '&cluster_qtd={cq}&callback={cb}',
+    var cluster = new L.TileCluster(gogeoUrl + '/map/' + databaseName + '/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=' + key + '&cluster_qtd={cq}',
       {
-        useJsonP: true,
+        useJsonP: false,
         calculateClusterQtd: function(zoom) {
           if (zoom >= 4) {
-            return 2;
+            return 1;
           } else {
             return 1;
           }
@@ -23,7 +23,7 @@
 
   var createLayer = function() {
     // add your collection
-    var tileLayer = L.tileLayer(gogeoUrl + '/map/db1/' + collectionName + '/{z}/{x}/{y}/tile.png?mapkey=123',
+    var tileLayer = L.tileLayer(gogeoUrl + '/map/' + databaseName + '/' + collectionName + '/{z}/{x}/{y}/tile.png?buffer=16&mapkey=' + key,
       {
         isBaseLayer: false
       }
