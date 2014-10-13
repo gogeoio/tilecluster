@@ -118,8 +118,8 @@ L.TileCluster = L.Class.extend({
 
     this._group.on('mouseover', this._drawConvexHull, this);
     this._group.on('mouseout', this._removeConvexHull, this);
-    map.on('moveend', this._update, this);
-    map.on('zoomend', this._update, this);
+    this._map.on('moveend', this._update, this);
+    this._map.on('zoomend', this._update, this);
   },
 
   _update: function () {
@@ -185,13 +185,18 @@ L.TileCluster = L.Class.extend({
     }, this.options));
 
     var script = document.createElement('script');
-    script.setAttribute("type", "text/javascript");
-    script.setAttribute("src", url);
+    script.setAttribute('type', 'text/javascript');
+    script.setAttribute('src', url);
 
     window[wk][functionName] = function(data, zoom) {
       self._cache[key] = data;
       delete window[wk][functionName];
       head.removeChild(script);
+
+      if (!zoom) {
+        zoom = self._map.getZoom();
+      }
+
       self._drawCluster(data, self, key, zoom);
     };
 
@@ -320,8 +325,6 @@ L.TileCluster = L.Class.extend({
     string = string.replace(')', '');
     string = string.replace(')', '');
     string = string.trim();
-
-    // console.log('string', string);
 
     var points = string.split(',');
     var lls = [];
