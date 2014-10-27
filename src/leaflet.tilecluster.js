@@ -15,7 +15,7 @@ L.Util.ajax = function(url, zoom, callback) {
   // the following is from JavaScript: The Definitive Guide
   // and https://developer.mozilla.org/en-US/docs/DOM/XMLHttpRequest/Using_XMLHttpRequest_in_IE6
   if (window.XMLHttpRequest === undefined) {
-    window.XMLHttpRequest = function () {
+    window.XMLHttpRequest = function() {
       /*global ActiveXObject:true */
       try {
         return new ActiveXObject("Microsoft.XMLHTTP");
@@ -55,7 +55,7 @@ L.TileCluster = L.Class.extend({
     pointerCursor: true
   },
 
-  initialize: function (url, options) {
+  initialize: function(url, options) {
     L.Util.setOptions(this, options);
 
     this._url = url;
@@ -81,6 +81,10 @@ L.TileCluster = L.Class.extend({
       this.options.calculateClusterQtd = this._calculateClusterQtd;
     }
 
+    if (!this.options.formatCount) {
+      this.options.formatCount = this._formatCount;
+    }
+
     if (this.options.useJsonP) {
       //Find a unique id in window we can use for our callbacks
       //Required for jsonP
@@ -102,7 +106,11 @@ L.TileCluster = L.Class.extend({
     return 1;
   },
 
-  onAdd: function (map) {
+  _formatCount: function(count) {
+    return count;
+  },
+
+  onAdd: function(map) {
     this._map = map;
     this._container = this._map._container;
 
@@ -118,11 +126,14 @@ L.TileCluster = L.Class.extend({
 
     this._group.on('mouseover', this._drawConvexHull, this);
     this._group.on('mouseout', this._removeConvexHull, this);
+    if (this.options.clickCallback && typeof this.options.clickCallback === 'function') {
+      this._group.on('click', this._clickCluster, this);
+    }
     map.on('moveend', this._update, this);
     map.on('zoomend', this._update, this);
   },
 
-  _update: function () {
+  _update: function() {
 
     this.clearClusters();
 
@@ -168,7 +179,7 @@ L.TileCluster = L.Class.extend({
     }
   },
 
-  _loadTileP: function (zoom, x, y) {
+  _loadTileP: function(zoom, x, y) {
     var head = document.getElementsByTagName('head')[0],
         key = zoom + '_' + x + '_' + y,
         functionName = this._jsonp_prefix + key,
@@ -203,7 +214,7 @@ L.TileCluster = L.Class.extend({
     head.appendChild(script);
   },
 
-  _loadTile: function (zoom, x, y) {
+  _loadTile: function(zoom, x, y) {
     var url = L.Util.template(this._url, L.Util.extend({
       s: L.TileLayer.prototype._getSubdomain.call(this, { x: x, y: y }),
       z: zoom,
@@ -222,11 +233,14 @@ L.TileCluster = L.Class.extend({
     );
   },
 
-  onRemove: function () {
+  onRemove: function() {
     var map = this._map;
 
     this._group.off('mouseover', this._drawConvexHull, this);
     this._group.off('mouseout', this._removeConvexHull, this);
+    if (this.options.clickCallback && typeof this.options.clickCallback === 'function') {
+      this._group.off('click', this._clickCluster, this);
+    }
     map.off('moveend', this._update, this);
     map.off('zoomend', this._update, this);
 
@@ -281,6 +295,23 @@ L.TileCluster = L.Class.extend({
     }
   },
 
+  _clickCluster: function(event) {
+    var key = event.layer.key;
+    var id = event.layer.id;
+
+    var data = this._cache[key];
+
+    if (!data || !data[id]) {
+      return;
+    }
+
+    data = data[id];
+
+    data.polygon = this._wktToPolygon(data.stats.hull);
+
+    this.options.clickCallback(event, data);
+  },
+
   _drawConvexHull: function(event) {
     // If already had a convex hull drawed
     if (this._convexHull) {
@@ -301,16 +332,13 @@ L.TileCluster = L.Class.extend({
     if (data && data.stats.hull) {
       if (data.count >= 2) {
         var wkt = data.stats.hull;
-        var lls = this._wktToLatLngs(wkt);
-
-        this._convexHull = L.polygon(lls);
-
+        this._convexHull = this._wktToPolygon(wkt);
         this._map.addLayer(this._convexHull);
       }
     }
   },
 
-  _wktToLatLngs: function(wkt) {
+  _wktToPolygon: function(wkt) {
 
     // Check if is a point
     if (wkt.match('POINT (.*)')) {
@@ -339,10 +367,10 @@ L.TileCluster = L.Class.extend({
       lls.push(L.latLng(lat, lon));
     }
 
-    return lls;
+    return L.polygon(lls);
   },
 
-  _defaultIconCreateFunction: function (cluster) {
+  _defaultIconCreateFunction: function(cluster) {
     var childCount = cluster.count;
 
     var c = ' marker-cluster-';
@@ -367,10 +395,18 @@ L.TileCluster = L.Class.extend({
       klass = 'medium';
     }
 
-    return new L.DivIcon({ html: '<div class="' + klass + '"><span>' + childCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
+    var formattedChildCount = childCount;
+
+    if (this.formatCount && typeof this.formatCount === 'function') {
+      formattedChildCount = this.formatCount(formattedChildCount);
+    } else {
+      formattedChildCount = this._formatCount(childCount);
+    }
+
+    return new L.DivIcon({ html: '<div class="' + klass + '"><span>' + formattedChildCount + '</span></div>', className: 'marker-cluster' + c, iconSize: iconPoint });
   }
 });
 
-L.tileCluster = function (url, options) {
+L.tileCluster = function(url, options) {
   return new L.TileCluster(url, options);
 };
