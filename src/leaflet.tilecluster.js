@@ -27,7 +27,7 @@ L.Util.ajax = function(url, zoom, callback) {
   }
 
   var response, request = new XMLHttpRequest();
-  request.open("GET", url);
+  request.open('GET', url);
   request.onreadystatechange = function() {
     /*jshint evil: true */
     if (request.readyState === 4 && request.status === 200) {
@@ -44,6 +44,7 @@ L.Util.ajax = function(url, zoom, callback) {
 };
 
 L.TileCluster = L.Class.extend({
+  includes: L.Mixin.Events,
   options: {
     subdomains: 'abc',
 
@@ -61,7 +62,11 @@ L.TileCluster = L.Class.extend({
     this._url = url;
     this._cache = {};
     this._group = L.featureGroup();
+    this._markers = L.featureGroup();
     this._jsonp_prefix = 'cl_us_ter_';
+
+    this._tiles = {};
+    this._totalCount = 0;
 
     if (url.match(/callback={cb}/) && !this.options.useJsonP) {
       console.error('Must set useJsonP options if you want use a callback function!');
@@ -115,6 +120,7 @@ L.TileCluster = L.Class.extend({
     this._container = this._map._container;
 
     this._group.addTo(this._map);
+    this._markers.addTo(this._map);
 
     this._update();
 
@@ -134,8 +140,6 @@ L.TileCluster = L.Class.extend({
   },
 
   _update: function() {
-
-    this.clearClusters();
 
     var bounds = this._map.getPixelBounds(),
         zoom = this._map.getZoom(),
@@ -164,18 +168,49 @@ L.TileCluster = L.Class.extend({
 
         var key = zoom + '_' + xw + '_' + yw;
 
-        if (!this._cache.hasOwnProperty(key)) {
-          this._cache[key] = null;
+        if (!this._tiles.hasOwnProperty(key)) {
+          this._tiles[key] = key;
+          if (!this._cache.hasOwnProperty(key)) {
+            this._cache[key] = null;
 
-          if (this.options.useJsonP) {
-            this._loadTileP(zoom, xw, yw);
+            if (this.options.useJsonP) {
+              this._loadTileP(zoom, xw, yw);
+            } else {
+              this._loadTile(zoom, xw, yw);
+            }
           } else {
-            this._loadTile(zoom, xw, yw);
+            this._drawCluster(this._cache[key], this, key, zoom);
           }
-        } else {
-          this._drawCluster(this._cache[key], this, key, zoom);
         }
       }
+    }
+
+    var tileBounds = L.bounds(
+            bounds.min.divideBy(tileSize)._floor(),
+            bounds.max.divideBy(tileSize)._floor());
+    this._removeOtherTiles(tileBounds);
+  },
+
+  updateCount: function() {
+    this._totalCount = 0;
+
+    for (var i in this._tiles) {
+      var key = this._tiles[i];
+      var data = this._cache[key];
+
+      if (data && data[0]) {
+        for (var j in data) {
+          var cluster = data[j];
+
+          if (this._tiles.hasOwnProperty(key)) {
+            this._totalCount += cluster.count;
+          }
+        }
+      }
+    }
+
+    if (this.options.updateCountCallback && typeof this.options.updateCountCallback === 'function') {
+      this.options.updateCountCallback.call(this, this._totalCount);
     }
   },
 
@@ -224,6 +259,7 @@ L.TileCluster = L.Class.extend({
     }, this.options));
 
     var key = zoom + '_' + x + '_' + y;
+
     var self = this;
     L.Util.ajax(url, zoom,
       function(data, zoom) {
@@ -231,6 +267,56 @@ L.TileCluster = L.Class.extend({
         self._drawCluster(data, self, key, zoom);
       }
     );
+  },
+
+  _removeOtherTiles: function (bounds) {
+    this._removeConvexHull();
+
+    var kArr, x, y, key;
+
+    for (key in this._tiles) {
+      kArr = key.split('_');
+      x = parseInt(kArr[1], 10);
+      y = parseInt(kArr[2], 10);
+
+      // remove tile if it's out of bounds
+      if (x < bounds.min.x || x > bounds.max.x || y < bounds.min.y || y > bounds.max.y) {
+        delete this._tiles[key];
+        this._removeTile(key);
+      }
+    }
+    this.updateCount();
+  },
+
+  _removeTile: function(key) {
+    var group = this._group;
+
+    var prevZoom = this._map.getZoom() - 1;
+    var howMany = this.options.calculateClusterQtd(prevZoom);
+
+    for (var i = 0; i < howMany; i++) {
+      for (var index in group.getLayers()) {
+        var layer = group.getLayers()[index];
+
+        if (layer && layer.key.match(key)) {
+          group.removeLayer(layer);
+        }
+      }
+
+      var markers = this._markers;
+
+      for (var index in markers.getLayers()) {
+        var marker = markers.getLayers()[index];
+
+        if (marker) {
+          var markerKey = marker.key;
+
+          if (key === markerKey) {
+            markers.removeLayer(marker);
+          }
+        }
+      }
+    }
   },
 
   onRemove: function() {
@@ -249,17 +335,21 @@ L.TileCluster = L.Class.extend({
     if (this.options.pointerCursor) {
       this._container.style.cursor = '';
     }
-    
+
     this._map.removeLayer(this._group);
+    this._map.removeLayer(this._markers);
   },
 
   _removeConvexHull: function() {
     var ch = this._convexHull;
 
     if (ch && this._map.hasLayer(ch)) {
-      this._map.removeLayer(ch);
+      try {
+        this._map.removeLayer(ch);
+      } catch (e) {
+      }
     }
-    
+
     this._convexHull = null;
   },
 
@@ -269,6 +359,7 @@ L.TileCluster = L.Class.extend({
   },
 
   _drawCluster: function(data, self, key, zoom) {
+    self.updateCount();
     // Check if the zoom of cluster is the same of map
     if (data && data[0] && zoom == this._map.getZoom()) {
       for (var i in data) {
@@ -278,18 +369,24 @@ L.TileCluster = L.Class.extend({
 
         if (cluster.count >= 2) {
           var clusterIcon = this.options.createIcon(cluster);
-          var clusterMarker = L.marker(latlng,
-            {
-              icon: clusterIcon
-            }
-          );
+
+          var options = {
+            icon: clusterIcon
+          };
+
+          if (this.options.clusterTooltip && cluster.count > 2) {
+            options.title = this.options.clusterTooltip;
+          }
+
+          var clusterMarker = L.marker(latlng, options);
 
           clusterMarker.key = key;
           clusterMarker.id = i;
           this._group.addLayer(clusterMarker);
         } else if (cluster.count == 1) {
           var marker = L.marker(latlng);
-          this._group.addLayer(marker);
+          marker.key = key;
+          this._markers.addLayer(marker);
         }
       }
     }
@@ -323,6 +420,8 @@ L.TileCluster = L.Class.extend({
 
     var data = this._cache[key];
 
+    // console.log('data', data, 'key', key, 'id', id);
+
     if (!data || !data[id]) {
       return;
     }
@@ -333,7 +432,12 @@ L.TileCluster = L.Class.extend({
       if (data.count >= 2) {
         var wkt = data.stats.hull;
         this._convexHull = this._wktToPolygon(wkt);
-        this._map.addLayer(this._convexHull);
+        if (this._convexHull) {
+          try {
+            this._map.addLayer(this._convexHull);
+          } catch (e) {
+          }
+        }
       }
     }
   },
@@ -373,25 +477,33 @@ L.TileCluster = L.Class.extend({
   _defaultIconCreateFunction: function(cluster) {
     var childCount = cluster.count;
 
+    var smallRange = 1000;
+    var mediumRange = 100000;
+    var largeRange = 1000000;
+    var xlRange = 5000000;
+
     var c = ' marker-cluster-';
-    if (childCount < 100) {
-      c += 'small';
-    } else if (childCount < 10000) {
-      c += 'medium';
-    } else if (childCount < 100000) {
-      c += 'large';
-    } else {
+    if (childCount >= xlRange) {
       c += 'extra-large';
+    } else if (childCount >= largeRange) {
+      c += 'large';
+    } else if (childCount >= mediumRange) {
+      c += 'medium';
+    } else {
+      c += 'small';
     }
 
-    var iconPoint = new L.Point(40, 40);
+    var iconPoint = new L.Point(50, 50);
     var klass = 'small';
 
-    if (childCount >= 100000) {
-      iconPoint = new L.Point(55, 55);
+    if (childCount >= xlRange) {
+      iconPoint = new L.Point(70, 70);
+      klass = 'extra-large';
+    } else if (childCount >= largeRange) {
+      iconPoint = new L.Point(65, 65);
       klass = 'large';
-    } else if (childCount >= 10000) {
-      iconPoint = new L.Point(45, 45);
+    } else if (childCount >= mediumRange) {
+      iconPoint = new L.Point(55, 55);
       klass = 'medium';
     }
 
