@@ -1,8 +1,8 @@
 (function() {
-  var gogeoUrl = 'http://maps.gogeo.io';
+  var gogeoUrl = 'http://{s}.gogeo.io/1.0';
   var databaseName = 'db1';
-  var collectionName = 'empresas_brasil';
-  var key = 'a9b6ed7c-0404-40e0-8c83-64cfcadd276d';
+  var collectionName = 'prospects';
+  var key = '123';
 
   var createCluster = function() {
     var cluster = new L.TileCluster(gogeoUrl + '/map/' + databaseName + '/' + collectionName + '/{z}/{x}/{y}/cluster.json?mapkey=' + key + '&cluster_qtd={cq}',
@@ -14,6 +14,25 @@
           } else {
             return 1;
           }
+        },
+        polygonOptsFunc: function(zoom, count) {
+          var color = 'red';
+
+          if (count < 100000) {
+            color = 'yellow';
+          }
+
+          if (count < 50000) {
+            color = 'blue';
+          }
+
+          return {
+            color: color
+          };
+        },
+        iconOpts: {
+          iconUrl: '/example/marker.png',
+          iconAnchor: [2, 2]
         }
       }
     );

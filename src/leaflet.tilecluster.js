@@ -46,7 +46,7 @@ L.Util.ajax = function(url, zoom, callback) {
 L.TileCluster = L.Class.extend({
   includes: L.Mixin.Events,
   options: {
-    subdomains: 'abc',
+    subdomains: ['m1', 'm2', 'm3', 'm4'],
 
     minZoom: 1,
     maxZoom: 18,
@@ -68,12 +68,12 @@ L.TileCluster = L.Class.extend({
     this._tiles = {};
     this._totalCount = 0;
 
-    if (url.match(/callback={cb}/) && !this.options.useJsonP) {
+    if (url.match('callback={cb}') && !this.options.useJsonP) {
       console.error('Must set useJsonP options if you want use a callback function!');
       return null;
     }
     
-    if (!url.match(/callback={cb}/) && this.options.useJsonP) {
+    if (!url.match('callback={cb}') && this.options.useJsonP) {
       console.error('Must add callback={cb} url param to use with JsonP mode!');
       return null;
     }
@@ -88,6 +88,22 @@ L.TileCluster = L.Class.extend({
 
     if (!this.options.formatCount) {
       this.options.formatCount = this._formatCount;
+    }
+
+    if (!this.options.polygonOpts) {
+      this.options.polygonOpts = null;
+    }
+
+    if (!this.options.polygonOptsFunc) {
+      this.options.polygonOptsFunc = this._getPolygonOpts;
+    }
+
+    if (this.options.iconOpts) {
+      var icon = L.icon(this.options.iconOpts);
+
+      this.options.markerOpts = {
+        icon: icon
+      };
     }
 
     if (this.options.useJsonP) {
@@ -113,6 +129,11 @@ L.TileCluster = L.Class.extend({
 
   _formatCount: function(count) {
     return count;
+  },
+
+  _getPolygonOpts: function(zoom, count) {
+    // this == super.options
+    return this.polygonOpts;
   },
 
   onAdd: function(map) {
@@ -384,7 +405,7 @@ L.TileCluster = L.Class.extend({
           clusterMarker.id = i;
           this._group.addLayer(clusterMarker);
         } else if (cluster.count == 1) {
-          var marker = L.marker(latlng);
+          var marker = L.marker(latlng, this.options.markerOpts);
           marker.key = key;
           this._markers.addLayer(marker);
         }
@@ -417,10 +438,9 @@ L.TileCluster = L.Class.extend({
 
     var key = event.layer.key;
     var id = event.layer.id;
+    var zoom = event.layer.zoom;
 
     var data = this._cache[key];
-
-    // console.log('data', data, 'key', key, 'id', id);
 
     if (!data || !data[id]) {
       return;
@@ -431,7 +451,11 @@ L.TileCluster = L.Class.extend({
     if (data && data.stats.hull) {
       if (data.count >= 2) {
         var wkt = data.stats.hull;
-        this._convexHull = this._wktToPolygon(wkt);
+        var zoom = this._map.getZoom();
+
+        var polygonOpts = this.options.polygonOptsFunc(zoom, data.count);
+
+        this._convexHull = this._wktToPolygon(wkt, polygonOpts);
         if (this._convexHull) {
           try {
             this._map.addLayer(this._convexHull);
@@ -442,7 +466,7 @@ L.TileCluster = L.Class.extend({
     }
   },
 
-  _wktToPolygon: function(wkt) {
+  _wktToPolygon: function(wkt, opts) {
 
     // Check if is a point
     if (wkt.match('POINT (.*)')) {
@@ -471,7 +495,7 @@ L.TileCluster = L.Class.extend({
       lls.push(L.latLng(lat, lon));
     }
 
-    return L.polygon(lls);
+    return L.polygon(lls, opts);
   },
 
   _defaultIconCreateFunction: function(cluster) {
