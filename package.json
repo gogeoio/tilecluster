@@ -1,0 +1,23 @@
+{
+  "name": "tilecluster",
+  "version": "0.3.0",
+  "description": "Leaflet tilecluster plugin adapted for use with gogeo.io",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gogeolbs/tilecluster.git"
+  },
+  "keywords": [
+    "leaflet",
+    "tilecluster",
+    "gogeo"
+  ],
+  "author": "robertogyn19",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/gogeolbs/tilecluster/issues"
+  },
+  "homepage": "https://github.com/gogeolbs/tilecluster#readme"
+}
